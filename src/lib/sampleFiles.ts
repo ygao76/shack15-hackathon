@@ -1,4 +1,4 @@
-import { FileNode } from '@/types';
+import { FileNode } from '../types';
 
 export const sampleProjectFiles: FileNode[] = [
   {
@@ -22,7 +22,6 @@ export const sampleProjectFiles: FileNode[] = [
     "lucide-react": "^0.294.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0"
@@ -40,16 +39,12 @@ export const sampleProjectFiles: FileNode[] = [
         path: 'src/app',
         children: [
           {
-            name: 'layout.tsx',
+            name: 'layout.js',
             type: 'file',
-            path: 'src/app/layout.tsx',
+            path: 'src/app/layout.js',
             content: `import './globals.css'
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -58,9 +53,9 @@ export default function RootLayout({
 }`
           },
           {
-            name: 'page.tsx',
+            name: 'page.js',
             type: 'file',
-            path: 'src/app/page.tsx',
+            path: 'src/app/page.js',
             content: `import Calendar from '@/components/Calendar'
 
 export default function Home() {
@@ -92,19 +87,18 @@ body {
         path: 'src/components',
         children: [
           {
-            name: 'Calendar.tsx',
+            name: 'Calendar.js',
             type: 'file',
-            path: 'src/components/Calendar.tsx',
+            path: 'src/components/Calendar.js',
             content: `'use client';
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Meeting } from '@/types/meeting';
 import MeetingModal from './MeetingModal';
 
-const Calendar: React.FC = () => {
+const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [meetings, setMeetings] = useState<Meeting[]>([
+  const [meetings, setMeetings] = useState([
     {
       id: '1',
       title: 'Team Standup',
@@ -123,17 +117,17 @@ const Calendar: React.FC = () => {
     }
   ]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | undefined>();
+  const [selectedMeeting, setSelectedMeeting] = useState();
 
-  const getDaysInMonth = (date: Date) => {
+  const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
 
-  const getFirstDayOfMonth = (date: Date) => {
+  const getFirstDayOfMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  const navigateMonth = (direction) => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
       if (direction === 'prev') {
@@ -145,7 +139,7 @@ const Calendar: React.FC = () => {
     });
   };
 
-  const getMeetingsForDate = (date: Date) => {
+  const getMeetingsForDate = (date) => {
     return meetings.filter(meeting => 
       meeting.date.toDateString() === date.toDateString()
     );
@@ -157,19 +151,19 @@ const Calendar: React.FC = () => {
     console.log('Create meeting clicked');
   };
 
-  const handleEditMeeting = (meeting: Meeting) => {
+  const handleEditMeeting = (meeting) => {
     // TODO: Implement meeting editing
     // Challenge: Set selected meeting and open modal for editing
     console.log('Edit meeting:', meeting.title);
   };
 
-  const handleSaveMeeting = (meeting: Meeting) => {
+  const handleSaveMeeting = (meeting) => {
     // TODO: Implement meeting save logic
     // Challenge: Add new meeting or update existing one in the meetings array
     console.log('Save meeting:', meeting);
   };
 
-  const handleDeleteMeeting = (meetingId: string) => {
+  const handleDeleteMeeting = (meetingId) => {
     // TODO: Implement meeting deletion
     // Challenge: Remove meeting from meetings array
     console.log('Delete meeting:', meetingId);
@@ -287,24 +281,15 @@ const Calendar: React.FC = () => {
 export default Calendar;`
           },
           {
-            name: 'MeetingModal.tsx',
+            name: 'MeetingModal.js',
             type: 'file',
-            path: 'src/components/MeetingModal.tsx',
+            path: 'src/components/MeetingModal.js',
             content: `'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, UserPlus } from 'lucide-react';
-import { Meeting } from '@/types/meeting';
 
-interface MeetingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  meeting?: Meeting;
-  onSave: (meeting: Meeting) => void;
-  onDelete?: () => void;
-}
-
-const MeetingModal: React.FC<MeetingModalProps> = ({
+const MeetingModal = ({
   isOpen,
   onClose,
   meeting,
@@ -342,14 +327,14 @@ const MeetingModal: React.FC<MeetingModalProps> = ({
     }
   }, [meeting, isOpen]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleAttendeeChange = (index: number, value: string) => {
+  const handleAttendeeChange = (index, value) => {
     // TODO: Implement attendee management
     // Challenge: Update specific attendee email in the attendees array
     console.log('Update attendee at index', index, 'to', value);
@@ -361,18 +346,18 @@ const MeetingModal: React.FC<MeetingModalProps> = ({
     console.log('Add new attendee');
   };
 
-  const removeAttendee = (index: number) => {
+  const removeAttendee = (index) => {
     // TODO: Implement removing attendee
     // Challenge: Remove attendee at specific index from attendees array
     console.log('Remove attendee at index', index);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     // TODO: Implement form validation and submission
     // Challenge: Validate required fields and create/update meeting object
-    const meetingData: Meeting = {
+    const meetingData = {
       id: meeting?.id || Date.now().toString(),
       title: formData.title,
       date: new Date(formData.date),
@@ -547,18 +532,29 @@ export default MeetingModal;`
         path: 'src/types',
         children: [
           {
-            name: 'meeting.ts',
+            name: 'meeting.js',
             type: 'file',
-            path: 'src/types/meeting.ts',
-            content: `export interface Meeting {
-  id: string;
-  title: string;
-  date: Date;
-  startTime: string;
-  endTime: string;
-  attendees: string[];
-  description?: string;
-}`
+            path: 'src/types/meeting.js',
+            content: `// JavaScript doesn't have interfaces, but here's the structure:
+// Meeting object should have these properties:
+// - id: string
+// - title: string  
+// - date: Date
+// - startTime: string
+// - endTime: string
+// - attendees: string[]
+// - description: string (optional)
+
+// Example meeting object:
+// const meeting = {
+//   id: '1',
+//   title: 'Team Standup',
+//   date: new Date(2024, 0, 15),
+//   startTime: '09:00',
+//   endTime: '09:30',
+//   attendees: ['john@example.com', 'jane@example.com'],
+//   description: 'Daily team sync'
+// };`
           }
         ]
       }

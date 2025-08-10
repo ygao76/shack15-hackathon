@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, Play, Square, ExternalLink, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { RefreshCw, Play, Square, ExternalLink, X, AlertTriangle } from 'lucide-react';
 import { FileNode } from '@/types';
+
+
 
 interface LivePreviewProps {
   files: FileNode[];
@@ -10,211 +12,246 @@ interface LivePreviewProps {
 
 const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
   const [isRunning, setIsRunning] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('http://localhost:3001');
   const [isLoading, setIsLoading] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [compiledCode, setCompiledCode] = useState<string>('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const lastCompileTime = useRef<number>(0);
 
-  // Extract the main page content from the files
-  const getMainPageContent = () => {
-    const pageFile = files.find(file => file.path === 'src/app/page.tsx');
-    if (!pageFile?.content) return null;
+  // Extract and compile the main components
+  const compileAndExecute = async () => {
+    if (!files || files.length === 0) {
+      setError('No files available for compilation');
+      return;
+    }
 
-    // For demo purposes, we'll show a simplified preview
-    // In a real implementation, this would compile and run the actual code
-    return pageFile.content;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Get the component files from the actual files array
+      const calendarFile = files.find(file => file.path === 'src/components/Calendar.js');
+      const meetingModalFile = files.find(file => file.path === 'src/components/MeetingModal.js');
+
+      if (!calendarFile?.content) {
+        throw new Error(`Calendar component not found. Available files: ${files.map(f => f.path).join(', ')}`);
+      }
+
+            // Extract and clean the component code from your actual files
+      const extractComponentCode = (content: string) => {
+        let cleaned = content
+          .replace(/'use client';?\s*/g, '') // Remove 'use client' directive
+          .replace(/import\s+.*?from\s+['"][^'"]*['"];?\s*/g, '') // Remove all import statements
+          .replace(/export\s+default\s+/g, '') // Remove export default
+          .replace(/export\s*{.*?};?\s*/g, '') // Remove named exports
+          .replace(/:\s*React\.FC/g, '') // Remove React.FC type annotation
+          .replace(/:\s*React\.FC<.*?>/g, '') // Remove React.FC with generics
+          .replace(/useState<[^>]*>/g, 'useState') // Remove useState generic types
+          .replace(/useState<[^>]*>\(/g, 'useState(') // Remove useState generic types with parentheses
+          .trim();
+
+        // Debug: Log the content before and after cleaning
+        console.log('Original content:', content.substring(0, 200));
+        console.log('Cleaned content:', cleaned.substring(0, 200));
+        
+        // Ensure the cleaned content is valid JavaScript/JSX
+        if (cleaned.includes('{') && cleaned.includes('}')) {
+          console.log('JSX detected in cleaned content');
+        }
+        
+        return cleaned;
+      };
+
+              const calendarCode = extractComponentCode(calendarFile.content);
+        const meetingModalCode = meetingModalFile?.content ? extractComponentCode(meetingModalFile.content) : '';
+        
+        // Debug: Log the cleaned code to see what we're working with
+        console.log('Cleaned Calendar Code:', calendarCode.substring(0, 500));
+        console.log('Cleaned MeetingModal Code:', meetingModalCode.substring(0, 500));
+
+              // Create the app code using your actual component code
+        const uniqueId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const appCode = `
+          // React and ReactDOM are loaded globally from UMD scripts
+          const { useState, useEffect } = React;
+          const { createRoot } = ReactDOM;
+          
+          // Mock Meeting type and icons for your components
+          const Meeting = {
+            id: '',
+            title: '',
+            date: new Date(),
+            startTime: '',
+            endTime: '',
+            description: '',
+            attendees: []
+          };
+
+          // Mock icons (simple text replacements)
+          const ChevronLeft = () => <span>←</span>;
+          const ChevronRight = () => <span>→</span>;
+          const Plus = () => <span>+</span>;
+          const X = () => <span>×</span>;
+          const Trash2 = () => <span>🗑️</span>;
+          const UserPlus = () => <span>👤+</span>;
+
+          // Your actual MeetingModal component code
+          ${meetingModalCode}
+
+          // Your actual Calendar component code
+          ${calendarCode}
+
+          // Main App that uses your components
+          const App = () => {
+            return (
+              <div className="min-h-screen bg-gray-100 p-8">
+                <div className="max-w-6xl mx-auto">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-8">Calendar App</h1>
+                  <Calendar />
+                </div>
+              </div>
+            );
+          };
+
+          // Render the app
+          const root = createRoot(document.getElementById('root'));
+          root.render(<App />);
+        `;
+
+        // Debug: Log the final appCode before Babel transformation
+        console.log('Final appCode length:', appCode.length);
+        console.log('Final appCode preview:', appCode.substring(0, 1000));
+
+      // Create the HTML document with the compiled code
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar App Preview</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    * { box-sizing: border-box; }
+    
+    /* Ensure calendar grid displays correctly */
+    .grid { display: grid; }
+    .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .gap-0 { gap: 0; }
+    
+    /* Calendar day styling */
+    .h-24 { height: 6rem; }
+    .border { border-width: 1px; }
+    .border-gray-200 { border-color: rgb(229 231 235); }
+    .p-1 { padding: 0.25rem; }
+    .overflow-y-auto { overflow-y: auto; }
+    
+    /* Today's styling */
+    .bg-blue-50 { background-color: rgb(239 246 255); }
+    .border-blue-300 { border-color: rgb(147 197 253); }
+    .text-blue-700 { color: rgb(29 78 216); }
+    
+    /* Regular day styling */
+    .bg-white { background-color: rgb(255 255 255); }
+    .text-gray-700 { color: rgb(55 65 81); }
+    
+    /* Button styling */
+    .bg-blue-600 { background-color: rgb(37 99 235); }
+    .text-white { color: rgb(255 255 255); }
+    .px-4 { padding-left: 1rem; padding-right: 1rem; }
+    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .rounded-md { border-radius: 0.375rem; }
+    .hover\\:bg-blue-700:hover { background-color: rgb(29 78 216); }
+    
+    /* Layout utilities */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .space-x-4 > * + * { margin-left: 1rem; }
+    .p-4 { padding: 1rem; }
+    .border-b { border-bottom-width: 1px; }
+    .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+    .font-semibold { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    // Transform TypeScript code to JavaScript using Babel
+    const ${uniqueId} = Babel.transform(\`${appCode.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`, {
+      presets: ['react'],
+      filename: 'app.jsx'
+    }).code;
+    
+    try {
+      // Execute the transformed code
+      eval(${uniqueId});
+    } catch (error) {
+      console.error('Babel transformation error:', error);
+      document.getElementById('root').innerHTML = '<div style="color: red; padding: 20px;">Compilation failed. Check console for details.</div>';
+    }
+  </script>
+</body>
+</html>`;
+
+      setCompiledCode(htmlContent);
+      setIsRunning(true);
+      lastCompileTime.current = Date.now();
+
+      // Update the iframe content
+      if (iframeRef.current) {
+        const iframe = iframeRef.current;
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(htmlContent);
+          doc.close();
+        }
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to compile code');
+      console.error('Compilation error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRunPreview = () => {
-    setIsLoading(true);
-    // Simulate starting the preview server
-    setTimeout(() => {
-      setIsRunning(true);
-      setIsLoading(false);
-    }, 2000);
+  const handleRefresh = () => {
+    compileAndExecute();
   };
 
   const handleStopPreview = () => {
     setIsRunning(false);
-    setIsModalVisible(false);
+    setError(null);
+    setCompiledCode('');
   };
 
-  const handleRefresh = () => {
-    // Simulate refreshing the preview
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-  };
+  // Auto-compile when files change (with debouncing)
+  useEffect(() => {
+    if (isRunning && files.length > 0) {
+      const timeoutId = setTimeout(() => {
+        compileAndExecute();
+      }, 1000); // Debounce for 1 second
 
-  const openInNewTab = () => {
-    window.open(previewUrl, '_blank');
-  };
-
-  const renderPreviewContent = () => {
-    if (!isRunning) {
-      return (
-        <div className="flex items-center justify-center h-full bg-gray-50">
-          <div className="text-center">
-            <div className="text-gray-400 text-lg mb-4">Preview Not Running</div>
-            <button
-              onClick={handleRunPreview}
-              disabled={isLoading}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              <span>{isLoading ? 'Starting...' : 'Start Preview'}</span>
-            </button>
-            <p className="text-xs text-gray-500 mt-2">
-              Click to start the live preview server
-            </p>
-          </div>
-        </div>
-      );
+      return () => clearTimeout(timeoutId);
     }
+  }, [files, isRunning]);
 
-    // Show a simulated preview of the calendar app
-    return (
-      <div className="h-full bg-white overflow-auto relative">
-        <div className="p-4">
-          <h1 className="text-2xl font-bold mb-4">Calendar App Preview</h1>
-          
-          {/* Simulated Calendar */}
-          <div className="bg-white rounded-lg shadow border">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <h2 className="text-xl font-semibold">January 2024</h2>
-                  <button className="p-2 hover:bg-gray-100 rounded-full">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-                <button
-                  onClick={() => setIsModalVisible(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Meeting</span>
-                </button>
-              </div>
-            </div>
+  // Initial compilation - only when files are available and not already running
+  useEffect(() => {
+            if (!isRunning && files.length > 0 && files.some(f => f.path === 'src/components/Calendar.js')) {
+      // Small delay to ensure files are fully loaded
+      const timeoutId = setTimeout(() => {
+        compileAndExecute();
+      }, 100);
 
-            {/* Days of week header */}
-            <div className="grid grid-cols-7 border-b border-gray-200">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="p-3 text-center text-sm font-medium text-gray-500">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-0">
-              {/* Empty cells for days before the first of the month */}
-              {Array.from({ length: 1 }, (_, i) => (
-                <div key={`empty-${i}`} className="h-24 bg-gray-50"></div>
-              ))}
-              
-              {/* Days of the month */}
-              {Array.from({ length: 31 }, (_, i) => {
-                const day = i + 1;
-                const hasMeetings = [15, 18].includes(day); // Sample meetings on days 15 and 18
-                
-                return (
-                  <div key={day} className="h-24 border border-gray-200 p-1">
-                    <div className="text-sm font-medium text-gray-700 mb-1">{day}</div>
-                    {hasMeetings && (
-                      <div
-                        className="text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1 cursor-pointer hover:bg-blue-200"
-                        onClick={() => setIsModalVisible(true)}
-                      >
-                        <div className="font-medium">
-                          {day === 15 ? 'Team Standup' : 'Project Review'}
-                        </div>
-                        <div>
-                          {day === 15 ? '09:00 - 09:30' : '14:00 - 15:00'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Status indicator */}
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-green-700">Preview running on {previewUrl}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Simulated Meeting Modal */}
-        {isModalVisible && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-            <div className="bg-white rounded-lg w-full max-w-md mx-4 shadow-lg">
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold">Meeting Modal (Simulated)</h3>
-                <button
-                  onClick={() => setIsModalVisible(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="text-sm text-gray-600">
-                  This is a simulated modal in the preview. The real modal logic is part of the coding task in the editor.
-                </div>
-                <input
-                  type="text"
-                  placeholder="Meeting Title"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="date" className="px-3 py-2 border border-gray-300 rounded-md text-sm" />
-                  <input type="time" className="px-3 py-2 border border-gray-300 rounded-md text-sm" />
-                </div>
-                <textarea
-                  placeholder="Description"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-              </div>
-              <div className="flex justify-end space-x-2 p-4 border-t border-gray-200">
-                <button
-                  onClick={() => setIsModalVisible(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setIsModalVisible(false)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+      return () => clearTimeout(timeoutId);
+    }
+  }, [files, isRunning]);
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -234,13 +271,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
                   <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 </button>
                 <button
-                  onClick={openInNewTab}
-                  className="p-2 text-gray-600 hover:bg-gray-200 rounded-md"
-                  title="Open in new tab"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-                <button
                   onClick={handleStopPreview}
                   className="p-2 text-red-600 hover:bg-red-100 rounded-md"
                   title="Stop preview"
@@ -252,13 +282,59 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          See live changes as you code
+          {isRunning ? 'Live code execution' : 'Click to start preview'}
         </p>
       </div>
 
       {/* Preview Content */}
-      <div className="flex-1">
-        {renderPreviewContent()}
+      <div className="flex-1 relative">
+        {!isRunning ? (
+          <div className="flex items-center justify-center h-full bg-gray-50">
+            <div className="text-center">
+              <div className="text-gray-400 text-lg mb-4">Preview Not Running</div>
+              <button
+                onClick={compileAndExecute}
+                disabled={isLoading}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+                <span>{isLoading ? 'Compiling...' : 'Start Preview'}</span>
+              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                Click to compile and run the code
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <div className="absolute top-2 left-2 right-2 z-10 bg-red-50 border border-red-200 rounded-md p-3">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                  <span className="text-sm text-red-800">Compilation Error: {error}</span>
+                  <button
+                    onClick={() => setError(null)}
+                    className="ml-auto text-red-600 hover:text-red-800"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <iframe
+              ref={iframeRef}
+              srcDoc={compiledCode}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin"
+              title="Code Preview"
+            />
+          </>
+        )}
       </div>
     </div>
   );

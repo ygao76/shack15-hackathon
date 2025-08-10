@@ -11,7 +11,7 @@ interface FileExplorerProps {
 }
 
 const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileSelect, selectedFile }) => {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['src', 'src/components', 'src/app']));
+  const [expandedFolders, setExpandedFolders] = useState(new Set(['src', 'src/components', 'src/app']));
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders);
@@ -62,7 +62,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileSelect, select
         </div>
         {node.type === 'folder' && isExpanded && node.children && (
           <div>
-            {node.children.map((child) => renderFileNode(child, depth + 1))}
+            {node.children.map((child: FileNode) => renderFileNode(child, depth + 1))}
           </div>
         )}
       </div>

@@ -37,8 +37,6 @@ export async function callOpenAI(
           },
           ...messages
         ],
-        max_tokens: parseInt(process.env.NEXT_PUBLIC_OPENAI_MAX_TOKENS || '1000'),
-        temperature: 0.7,
       }),
     });
 

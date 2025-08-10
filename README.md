@@ -31,7 +31,6 @@ NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional: Model configuration
 NEXT_PUBLIC_OPENAI_MODEL=gpt-5
-NEXT_PUBLIC_OPENAI_MAX_TOKENS=1000
 ```
 
 **Note**: The `NEXT_PUBLIC_` prefix is required for Next.js to expose these variables to the client-side code.

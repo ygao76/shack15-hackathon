@@ -33,7 +33,7 @@ export default function Home() {
       timestamp: new Date()
     }
   ]);
-  const [isInterviewerLoading, setIsInterviewerLoading] = useState(false);
+    const [isInterviewerLoading, setIsInterviewerLoading] = useState(false);
 
   // Refs for proactive AI feedback (interviewer only)
   const proactiveTimeoutRef = useRef<number | null>(null);
@@ -56,8 +56,12 @@ export default function Home() {
     const out: FileNode[] = [];
     const walk = (list: FileNode[]) => {
       for (const n of list) {
-        if (n.type === 'file') out.push(n);
-        if (n.children) walk(n.children);
+        if (n.type === 'file') {
+          out.push(n);
+        }
+        if (n.children) {
+          walk(n.children);
+        }
       }
     };
     walk(nodes);
@@ -68,11 +72,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!selectedFile) {
-      const preferred = findFileByPath(files, 'src/components/Calendar.tsx');
+      const preferred = findFileByPath(files, 'src/components/Calendar.js');
       const first = preferred || allFiles[0];
       if (first) setSelectedFile(first);
     }
-  }, [files, allFiles, selectedFile]);
+    }, [files, allFiles, selectedFile]);
 
   const scheduleProactiveFeedback = (filePath: string, oldContent: string, newContent: string) => {
     if (proactiveTimeoutRef.current) {
@@ -308,7 +312,7 @@ export default function Home() {
           <div className="col-span-2 bg-white rounded-lg shadow-md overflow-hidden h-full min-h-0">
             <FileExplorer
               files={files}
-              onFileSelect={(file) => setSelectedFile(file)}
+              onFileSelect={(file: React.SetStateAction<FileNode | undefined>) => setSelectedFile(file)}
               selectedFile={selectedFile?.path}
             />
           </div>
@@ -343,7 +347,7 @@ export default function Home() {
           
           {/* Live Preview */}
           <div className="col-span-3 bg-white rounded-lg shadow-md p-4 overflow-hidden h-full min-h-0">
-            <LivePreview files={files} />
+            <LivePreview files={allFiles} />
           </div>
           
           {/* Assistant Chat (basic, user-triggered only) */}
@@ -353,6 +357,7 @@ export default function Home() {
               messages={assistantMessages}
               isLoading={isAssistantLoading}
               title="AI Assistant"
+              subtitle="Get JavaScript code examples and solutions for your coding challenges"
             />
           </div>
         </div>
