@@ -1,18 +1,24 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, Mic, Square } from 'lucide-react';
 import { ChatMessage } from '@/types';
 
 interface ChatInterfaceProps {
   onSendMessage: (message: string) => void;
   messages: ChatMessage[];
   isLoading?: boolean;
+  enableVoice?: boolean;
+  title?: string;
+  subtitle?: string;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, isLoading }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, isLoading, enableVoice = false, title, subtitle }) => {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const [voiceSupported, setVoiceSupported] = useState<boolean>(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,6 +28,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, 
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // Detect Web Speech API support
+    const SpeechRecognitionImpl = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setVoiceSupported(Boolean(SpeechRecognitionImpl));
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
@@ -30,15 +42,62 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, 
     }
   };
 
+  const startRecording = () => {
+    const SpeechRecognitionImpl = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionImpl) return;
+
+    const recognition = new SpeechRecognitionImpl();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onerror = () => {
+      setIsRecording(false);
+    };
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join(' ')
+        .trim();
+
+      if (transcript) {
+        // Auto-send recognized text
+        onSendMessage(transcript);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const stopRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+  };
+
+  const headerTitle = title ?? (enableVoice ? 'AI Interviewer' : 'AI Assistant');
+  const headerSubtitle = subtitle ?? (enableVoice ? 'Voice and text support' : 'Ask questions or get help during the coding challenge');
+
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="bg-gray-100 px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center">
           <Bot className="w-4 h-4 mr-2" />
-          Interviewer Chat (ChatGPT)
+          {headerTitle} {enableVoice && voiceSupported ? ' (Voice Enabled)' : ''}
         </h3>
         <p className="text-xs text-gray-500 mt-1">
-          Ask questions or get help during the coding challenge
+          {headerSubtitle}
         </p>
       </div>
 
@@ -46,7 +105,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, 
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-8">
             <Bot className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">Start a conversation with the AI interviewer</p>
+            <p className="text-sm">Start a conversation with the AI</p>
           </div>
         )}
 
@@ -99,15 +158,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendMessage, messages, 
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 items-center">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask the interviewer a question..."
+            placeholder="Type a message..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={isLoading}
           />
+          {enableVoice && (
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={!voiceSupported || isLoading}
+              className={`p-2 rounded-md border ${
+                isRecording ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-300'
+              } disabled:opacity-50`}
+              title={voiceSupported ? (isRecording ? 'Stop Recording' : 'Start Recording') : 'Voice input not supported in this browser'}
+            >
+              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}

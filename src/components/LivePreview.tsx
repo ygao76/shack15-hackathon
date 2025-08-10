@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Play, Square, ExternalLink } from 'lucide-react';
+import { RefreshCw, Play, Square, ExternalLink, X } from 'lucide-react';
 import { FileNode } from '@/types';
 
 interface LivePreviewProps {
@@ -12,6 +12,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('http://localhost:3001');
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   // Extract the main page content from the files
   const getMainPageContent = () => {
@@ -34,6 +35,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
 
   const handleStopPreview = () => {
     setIsRunning(false);
+    setIsModalVisible(false);
   };
 
   const handleRefresh = () => {
@@ -76,7 +78,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
 
     // Show a simulated preview of the calendar app
     return (
-      <div className="h-full bg-white overflow-auto">
+      <div className="h-full bg-white overflow-auto relative">
         <div className="p-4">
           <h1 className="text-2xl font-bold mb-4">Calendar App Preview</h1>
           
@@ -97,7 +99,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
                     </svg>
                   </button>
                 </div>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                <button
+                  onClick={() => setIsModalVisible(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -131,7 +136,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
                   <div key={day} className="h-24 border border-gray-200 p-1">
                     <div className="text-sm font-medium text-gray-700 mb-1">{day}</div>
                     {hasMeetings && (
-                      <div className="text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1">
+                      <div
+                        className="text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1 cursor-pointer hover:bg-blue-200"
+                        onClick={() => setIsModalVisible(true)}
+                      >
                         <div className="font-medium">
                           {day === 15 ? 'Team Standup' : 'Project Review'}
                         </div>
@@ -154,6 +162,56 @@ const LivePreview: React.FC<LivePreviewProps> = ({ files }) => {
             </div>
           </div>
         </div>
+
+        {/* Simulated Meeting Modal */}
+        {isModalVisible && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+            <div className="bg-white rounded-lg w-full max-w-md mx-4 shadow-lg">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold">Meeting Modal (Simulated)</h3>
+                <button
+                  onClick={() => setIsModalVisible(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="text-sm text-gray-600">
+                  This is a simulated modal in the preview. The real modal logic is part of the coding task in the editor.
+                </div>
+                <input
+                  type="text"
+                  placeholder="Meeting Title"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" className="px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                  <input type="time" className="px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                </div>
+                <textarea
+                  placeholder="Description"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 p-4 border-t border-gray-200">
+                <button
+                  onClick={() => setIsModalVisible(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setIsModalVisible(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

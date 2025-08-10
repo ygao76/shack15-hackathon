@@ -30,7 +30,7 @@ To use the AI interviewer, you need an OpenAI API key:
 NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional: Model configuration
-NEXT_PUBLIC_OPENAI_MODEL=gpt-4
+NEXT_PUBLIC_OPENAI_MODEL=gpt-5
 NEXT_PUBLIC_OPENAI_MAX_TOKENS=1000
 ```
 
