@@ -30,6 +30,59 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ file, onCodeChange }) => {
     }
   };
 
+  const handleEditorWillMount = (monaco: any) => {
+    // Disable all intellisense features
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.Latest,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
+      strict: false,
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: false,
+      resolveJsonModule: false,
+      isolatedModules: false,
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      baseUrl: '.',
+      paths: {}
+    });
+
+    // Set up JavaScript defaults with intellisense disabled
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.Latest,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
+      strict: false,
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: false,
+      resolveJsonModule: false,
+      isolatedModules: false,
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      baseUrl: '.',
+      paths: {}
+    });
+
+    // Disable all language service features
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+      noSuggestionDiagnostics: true
+    });
+
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+      noSuggestionDiagnostics: true
+    });
+  };
+
   if (!file) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-50">
@@ -54,14 +107,28 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ file, onCodeChange }) => {
           value={file.content || ''}
           onChange={(value) => onCodeChange(value || '')}
           theme="vs-light"
+          beforeMount={handleEditorWillMount}
           options={{
-            fontSize: 14,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            wordWrap: 'on',
-            tabSize: 2,
-            insertSpaces: true,
+            value: file?.content || '',
+            language: getLanguage(file?.path || ''),
+            theme: 'vs',
             automaticLayout: true,
+            minimap: { enabled: false },
+            fontSize: 14,
+            lineNumbers: 'on',
+            roundedSelection: false,
+            scrollBeyondLastLine: false,
+            readOnly: false,
+            cursorStyle: 'line',
+            wordWrap: 'on',
+            // Disable all intellisense features
+            quickSuggestions: false,
+            suggestOnTriggerCharacters: false,
+            parameterHints: { enabled: false },
+            hover: { enabled: false },
+            folding: false,
+            links: false,
+            colorDecorators: false
           }}
         />
       </div>

@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import FileExplorer from '@/components/FileExplorer';
 import CodeEditor from '@/components/CodeEditor';
 import ChatInterface from '@/components/ChatInterface';
+import LivePreview from '@/components/LivePreview';
 import { FileNode, ChatMessage } from '@/types';
 import { sampleProjectFiles } from '@/lib/sampleFiles';
+import { callOpenAI } from '@/lib/openai';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<FileNode | undefined>();
@@ -55,32 +57,40 @@ export default function Home() {
     setChatMessages(prev => [...prev, userMessage]);
     setIsChatLoading(true);
 
-    // Simulate AI response (in a real app, this would call OpenAI API)
-    setTimeout(() => {
+    try {
+      // Prepare conversation history for context
+      const conversationHistory = chatMessages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      // Call OpenAI API
+      const response = await callOpenAI([...conversationHistory, { role: 'user', content: message }]);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: generateAIResponse(message),
+        content: response.content,
         timestamp: new Date()
       };
 
       setChatMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error calling OpenAI:', error);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `I'm sorry, but I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your .env.local file and ensure OPENAI_API_KEY is set correctly.`,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsChatLoading(false);
-    }, 1000 + Math.random() * 2000);
-  };
-
-  const generateAIResponse = (userMessage: string): string => {
-    // Simple response generator for demo purposes
-    const responses = [
-      "Great question! For implementing that functionality, you'll want to focus on updating the state management. Make sure to handle both the UI updates and the data persistence.",
-      "That's a common challenge in React development. Consider using the useState hook to manage the form data, and don't forget to validate the inputs before submission.",
-      "Good thinking! For the attendee management, you'll need to work with array operations. The key is to properly update the state while maintaining immutability.",
-      "Excellent approach! Remember to handle edge cases like empty fields and duplicate entries. The user experience will be much better with proper validation.",
-      "That's the right direction! For the calendar functionality, make sure to properly format the dates and handle timezone considerations if needed.",
-      "Nice work! Don't forget to implement proper error handling and user feedback. Loading states and success messages really improve the user experience."
-    ];
-
-    return responses[Math.floor(Math.random() * responses.length)];
+    }
   };
 
   return (
@@ -103,29 +113,31 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Code Editor */}
-        <div className="flex-1 flex">
-          {/* File Explorer */}
-          <div className="w-64 border-r border-gray-200">
-            <FileExplorer
-              files={files}
-              onFileSelect={handleFileSelect}
-              selectedFile={selectedFile?.path}
-            />
-          </div>
-
-          {/* Code Editor */}
-          <div className="flex-1">
-            <CodeEditor
-              file={selectedFile}
-              onCodeChange={handleCodeChange}
-            />
-          </div>
+      <div className="grid grid-cols-12 gap-4 h-full p-4">
+        {/* File Explorer */}
+        <div className="col-span-2 bg-white rounded-lg shadow-md p-4 overflow-hidden">
+          <FileExplorer
+            files={files}
+            onFileSelect={handleFileSelect}
+            selectedFile={selectedFile?.path}
+          />
         </div>
-
-        {/* Right Panel - Chat Interface */}
-        <div className="w-96 border-l border-gray-200">
+        
+        {/* Code Editor */}
+        <div className="col-span-4 bg-white rounded-lg shadow-md p-4 overflow-hidden">
+          <CodeEditor
+            file={selectedFile}
+            onCodeChange={handleCodeChange}
+          />
+        </div>
+        
+        {/* Live Preview */}
+        <div className="col-span-3 bg-white rounded-lg shadow-md p-4 overflow-hidden">
+          <LivePreview files={files} />
+        </div>
+        
+        {/* Chat Interface */}
+        <div className="col-span-3 bg-white rounded-lg shadow-md p-4 overflow-hidden">
           <ChatInterface
             onSendMessage={handleSendMessage}
             messages={chatMessages}
@@ -145,7 +157,7 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center space-x-4">
-            <span>💡 Tip: Ask the AI for help with implementation details</span>
+            <span>💡 Tip: See live changes in the preview pane as you code</span>
           </div>
         </div>
       </footer>
